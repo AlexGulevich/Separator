@@ -10,7 +10,7 @@ freq2, data2 = wavfile.read('wav/mic2.wav')
 # Assemble into a 2D array. Each row is a recording from a mic.
 x = np.vstack((data1, data2))
 
-#just to test
+# Just to test.
 y = x
 
 # Make new wav files containing the unmixed signals.
