@@ -1,3 +1,3 @@
 # Separator
 Blind speech separation
-Hello!
+Kurtosis Maximization ICA algorithm
