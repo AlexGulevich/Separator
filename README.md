@@ -3,4 +3,4 @@ Blind speech separation
 
 Kurtosis Maximization ICA algorithm
 
-Use "unmix.py" to test
+Use bats to test
