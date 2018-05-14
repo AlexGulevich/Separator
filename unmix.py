@@ -15,7 +15,6 @@ def check_not_exist(name):
         return 0
 
 
-
 def mserr(x, y):
 
     # center data
@@ -23,8 +22,14 @@ def mserr(x, y):
     y = y - y.mean()
 
     # lead to unit variance
-    x = x / np.std(x)  # todo: what if zero variance?
-    y = y / np.std(y)
+    # cause unmixed data not scaled equal to original
+    dev = np.std(x)
+    if dev > 0:
+        x = x / dev
+
+    dev = np.std(y)
+    if dev > 0:
+        y = y / dev
 
     # MSE itself
     return (( x - y )**2).mean()
@@ -56,33 +61,33 @@ def minMSE(zz, data):
     return mse, zz1
 
 
+def check_split_params(frame_overlap, frame_step, frame_minv):
 
-def split(name1, name2, uxname1, uxname2):
+    if frame_overlap < 0 or frame_overlap > 0.99:
+        print('frame_overlap should be 0 < frame_overlap < 0.99')
+        return -1
+
+    if abs(round(frame_overlap * frame_step ) - frame_overlap * frame_step) > 0:
+        print('frame_overlap * frame_step should be int')
+        return -1
+
+    if abs(round(frame_minv * frame_step ) - frame_minv * frame_step) > 0:
+        print('frame_minv * frame_step should be int')
+        return -1
+
+    return 0
     
-    if check_not_exist(name1) or check_not_exist(name2):    
-        return
+
+def split(ref1, ref2, mix_out, freq, uxname1, uxname2, frame_overlap, frame_step, frame_maxv, frame_minv):
     
-    # Get the recorded signals.
-    freq1, data1 = wavfile.read(name1)
-    freq2, data2 = wavfile.read(name2)
-
-   
-    if freq1 != freq2:
-        print('frequenies are not equal!. Cannot proceed')
+    if check_split_params(frame_overlap, frame_step, frame_minv):
         return
 
-    data1 = data1[0:1000000]
-    data2 = data2[0:1000000]
+    data1 = mix_out[0, :]
+    data2 = mix_out[1, :]
     
     # Assemble into a 2D array. Each row is a recording from a mic.
     x = np.vstack((data1, data2))
-
-
-    frame_overlap = 0.25    # from 0.0 to 0.99
-    frame_step =    800     # step:            frame_overlap * frame_step should be int
-    frame_maxv = 100000     # frame max value 
-    frame_minv =   4000     # frame min value: frame_minv    * frame_step should be int
-    
 
     res  = []
     res2 = []
@@ -118,10 +123,10 @@ def split(name1, name2, uxname1, uxname2):
             dn2 = xn1 + zn2
 
             # mse and choose unmixed data
-            mse1_frame, zz1 = minMSE(zz[:, zn1:zn2], data1[dn1:dn2])
-            mse2_frame, zz2 = minMSE(zz[:, zn1:zn2], data2[dn1:dn2])
+            mse1_frame, zz1 = minMSE(zz[:, zn1:zn2], ref1[dn1:dn2])
+            mse2_frame, zz2 = minMSE(zz[:, zn1:zn2], ref2[dn1:dn2])
             
-            #frame MSE
+            # frame MSE
             mse1 = mse1 + mse1_frame
             mse2 = mse2 + mse2_frame
 
@@ -137,7 +142,7 @@ def split(name1, name2, uxname1, uxname2):
         res2.append(math.sqrt( (mse1 + mse2) / 2 ))
 
         # X axis
-        time.append(frame / freq1);
+        time.append(frame / freq);
 
     #plots
     plt.subplot(2,1,1)
@@ -153,8 +158,8 @@ def split(name1, name2, uxname1, uxname2):
     plt.show()
     
     # Make new wav files containing the unmixed signals.
-    wavfile.write(uxname1, freq1, 1000*zzz[0].astype(np.int16))
-    wavfile.write(uxname2, freq1, 1000*zzz[1].astype(np.int16))
+    wavfile.write(uxname1, freq, 1000*zzz[0].astype(np.int16))
+    wavfile.write(uxname2, freq, 1000*zzz[1].astype(np.int16))
     
 
 def merge (name1, name2, xname1, xname2, mix = np.array([1,0,0,1])):
@@ -189,6 +194,8 @@ def merge (name1, name2, xname1, xname2, mix = np.array([1,0,0,1])):
     # Make new wav files containing the unmixed signals.
     wavfile.write(xname1, freq1, mix_out[0].astype(gen_type))
     wavfile.write(xname2, freq1, mix_out[1].astype(gen_type))
+
+    return data1, data2, mix_out, freq1
     
     
     
@@ -196,25 +203,27 @@ def merge (name1, name2, xname1, xname2, mix = np.array([1,0,0,1])):
 def arguments():
     parser=argparse.ArgumentParser(description='split or mix')
     parser.add_argument('--type', required=True, type=str, help='either split or mix')
-    parser.add_argument('--mix_matrix', nargs=4, default=[1,0,0,1], required=False)
-    parser.add_argument('--in1', required=True)
-    parser.add_argument('--in2', required=True)
-    parser.add_argument('--out1', required=True)
-    parser.add_argument('--out2', required=True)
+    parser.add_argument('--mix_matrix', nargs=4, default=[0.7, 0.3, 0.3, 0.7], required = False)
+    parser.add_argument('--in1',  required = True)
+    parser.add_argument('--in2',  required = True)
+    parser.add_argument('--out1', required = True)
+    parser.add_argument('--out2', required = True)
+    parser.add_argument('--frame_overlap', default = 0, required = False)
+    parser.add_argument('--frame_step',    default = 400,   required = False)
+    parser.add_argument('--frame_maxv',    default = 50000, required = False)
+    parser.add_argument('--frame_minv',    default =  3200,  required = False)
     return parser
-    
+
+   
 
 if __name__=='__main__':
-    #parser = arguments()
-    #args = parser.parse_args()
-    #if 'split' == args.type:        
-    #    split(args.in1, args.in2, args.out1, args.out2)
-    #elif 'mix' == args.type:
-    #    merge(args.in1, args.in2, args.out1, args.out2, np.array(args.mix_matrix).astype(np.float32))
+    parser = arguments()
+    args = parser.parse_args()
+    if 'split' == args.type:
+        data1, data2, mix_out, freq = merge(args.in1, args.in2, args.out1, args.out2, np.array(args.mix_matrix).astype(np.float32))
+        split(data1, data2, mix_out, freq, args.out1, args.out2, float(args.frame_overlap), int(args.frame_step), int(args.frame_maxv), int(args.frame_minv))
+        
+    elif 'mix' == args.type:
+        merge(args.in1, args.in2, args.out1, args.out2, np.array(args.mix_matrix).astype(np.float32))
 
-    merge("wav/Alice_8k_8bit.wav", "wav/George_8k_8bit.wav", "wav/GA1.wav", "wav/GA2.wav", np.array([0.7, 0.3, 0.3, 0.7]).astype(np.float32))
-    #merge("wav/OSR_fr_000_0041_8k.wav", "wav/OSR_us_000_0010_8k.wav", "wav/GA1.wav", "wav/GA2.wav", np.array([0.7, 0.3, 0.3, 0.7]).astype(np.float32))
-
-    split("wav/GA1.wav", "wav/GA2.wav", "wav/ouuu1.wav", "wav/ouuu2.wav")
-    
     print('operation is completed')
