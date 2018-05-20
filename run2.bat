@@ -1,1 +1,1 @@
-unmix.py --type split --in1 "wav/OSR_fr_8k.wav" --in2 "wav/OSR_us_8k.wav" --out1 "wav/ouuu1.wav" --out2 "wav/ouuu2.wav" 
+unmix.py --type split --in1 "wav3" --in2 "wav4" --out1 "out/ouuu1a.wav" --out2 "out/ouuu2a.wav" 

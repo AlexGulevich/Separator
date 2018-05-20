@@ -1,1 +1,1 @@
-unmix.py --type split --in1 "wav/Alice_8k_8bit.wav" --in2 "wav/George_8k_8bit.wav" --out1 "wav/ouuu1.wav" --out2 "wav/ouuu2.wav" 
+unmix.py --type split --in1 "wav1" --in2 "wav2" --out1 "out/ouuu1.wav" --out2 "out/ouuu2.wav" 

@@ -133,7 +133,7 @@ def split(ref1, ref2, mix_out, freq, uxname1, uxname2, frame_overlap, frame_step
             # unmixed data
             zzz = np.append(zzz, np.vstack((zz1, zz2)), 1)
 
-        #frame MSE
+        # frame MSE
         res .append(math.sqrt( (mse1 + mse2) / 2 ))
 
         # global MSE
@@ -144,7 +144,7 @@ def split(ref1, ref2, mix_out, freq, uxname1, uxname2, frame_overlap, frame_step
         # X axis
         time.append(frame / freq);
 
-    #plots
+    # plots
     plt.subplot(2,1,1)
     plt.plot(time, res )
     plt.ylabel("Frame MSE")
@@ -165,27 +165,61 @@ def split(ref1, ref2, mix_out, freq, uxname1, uxname2, frame_overlap, frame_step
 def merge (name1, name2, xname1, xname2, mix = np.array([1,0,0,1])):
     if check_not_exist(name1) or check_not_exist(name2):    
         return
-     # Get the recorded signals.
-    freq1, data1 = wavfile.read(name1)
-    freq2, data2 = wavfile.read(name2)
+
+    x = [[],[]]
+    data1all = []
+    data2all = []
+    dir2 = os.listdir(name2)
+    dir2Count = 0;
+    firstFile = True
     
-    if freq1 != freq2:
-        print('frequenies are not equal!. Cannot proceed')
-        return
-    if data1.dtype != data2.dtype:
-        print ('types are not equal.')
-        return
-    gen_type = data1.dtype
-    if np.float32 == gen_type:        
-        (min_val, max_val) = (-1.0, 1.0)
-    elif np.uint8 == gen_type:
-        (min_val, max_val) = (0, 255)
-    else:
-        (min_val, max_val) = (np.iinfo(gen_type).min, np.iinfo(gen_type).max)
-        
-    min_len = np.min((data1.shape[0], data2.shape[0]))
+    for file in os.listdir(name1):
+
+        if file.endswith(".wav"):
+            # Get the recorded signal.
+            freq1, data1 = wavfile.read(os.path.join(name1, file))
+
+            if firstFile:
+                freq = freq1
+                dtype = data1.dtype
+                firstFile = False
+
+            while dir2Count < len(dir2):
+                file = dir2[dir2Count]
+                if file.endswith(".wav"):
+                    break
+                else:
+                    dir2Count += 1
+                    
+            if dir2Count >= len(dir2):
+                break
+
+        # Get the recorded signal.
+        freq2, data2 = wavfile.read(os.path.join(name2, file))
+        dir2Count += 1
     
-    x = np.vstack((data1[:min_len], data2[:min_len]))
+        if freq1 != freq2 and freq1 != freq:
+            print('frequenies are not equal!. Cannot proceed')
+            return
+        if data1.dtype != data2.dtype and data1.dtype != dtype:
+            print ('types are not equal.')
+            return
+        gen_type = data1.dtype
+        if np.float32 == gen_type:        
+            (min_val, max_val) = (-1.0, 1.0)
+        elif np.uint8 == gen_type:
+            (min_val, max_val) = (0, 255)
+        else:
+            (min_val, max_val) = (np.iinfo(gen_type).min, np.iinfo(gen_type).max)
+            
+        min_len = np.min((data1.shape[0], data2.shape[0]))
+
+        x1 = np.vstack((data1[:min_len], data2[:min_len]))
+
+        x = np.append(x, x1, 1)
+
+        data1all = np.append(data1all, data1)
+        data2all = np.append(data2all, data2)
     
     mix = mix.reshape([2,2])
     mix_out = np.dot(mix, x)
@@ -195,8 +229,7 @@ def merge (name1, name2, xname1, xname2, mix = np.array([1,0,0,1])):
     wavfile.write(xname1, freq1, mix_out[0].astype(gen_type))
     wavfile.write(xname2, freq1, mix_out[1].astype(gen_type))
 
-    return data1, data2, mix_out, freq1
-    
+    return data1all, data2all, mix_out, freq1
     
     
 
